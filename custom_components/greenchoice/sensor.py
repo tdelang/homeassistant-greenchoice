@@ -62,6 +62,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyDay"))
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyNight"))
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentEnergyTotal"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentProduction"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentUsage"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentNet"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentNetPrice"))
     add_entities(sensors, True)
 
 
@@ -149,6 +153,20 @@ class GreenchoiceSensor(Entity):
         if self._measurement_type == "currentGas":
             self._icon = 'mdi:fire'
             self._name = 'currentGas'
+        if self._measurement_type == "currentProduction":
+            self._icon = 'mdi:power-plug'
+            self._name = 'currentProduction'
+        if self._measurement_type == "currentUsage":
+            self._icon = 'mdi:power-plug'
+            self._name = 'currentUsage'
+        if self._measurement_type == "currentNet":
+            self._icon = 'mdi:power-plug'
+            self._name = 'currentNet'
+        if self._measurement_type == "currentNetPrice":
+            self._icon = 'mdi:currency-eur'
+            self._name = 'currentNetPrice'
+
+            
 
 
 class GreenchoiceApiData:
@@ -188,6 +206,19 @@ class GreenchoiceApiData:
             except http.client.HTTPException:
                 _LOGGER.error("Could not retrieve current numbers.")
                 self.result = "Could not retrieve current numbers."         
+            
+            try:
+                response = http.client.HTTPSConnection(self._resource, timeout=10)
+                response.request("GET", "/api/v2/verbruik/getverbruikperiodes?overeenkomstid=" + self._overeenkomst_id + "&startDate=" + (datetime.today() - timedelta(days=2)).strftime('%Y-%m-%d') + "&endDate=" + (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d') + "&year=0&month=0&isGas=false&ksDate=", headers = {'Authorization': "Bearer "+self.token})
+                json_result = json.loads(response.getresponse().read().decode('utf-8'))
+
+                self.result["currentProduction"] = json_result[0]["Teruglevering"]["Verbruik"]
+                self.result["currentUsage"] = json_result[0]["Levering"]["Verbruik"]
+                self.result["currentNet"] = json_result[0]["Levering"]["Verbruik"] - json_result[0]["Teruglevering"]["Verbruik"]
+                self.result["currentNetPrice"] = round(json_result[0]["Levering"]["VariabeleKosten"] - json_result[0]["Teruglevering"]["VariabeleKosten"], 2)
+            except http.client.HTTPException:
+                _LOGGER.error("Could not retrieve current usage numbers.")
+                self.result = "Could not retrieve current usage numbers." 
                     
         except http.client.HTTPException:
             _LOGGER.error("Could not retrieve token.")
