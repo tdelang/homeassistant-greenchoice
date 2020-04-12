@@ -237,11 +237,11 @@ class GreenchoiceApiData:
                 currentPeriodNetPrice = 0
 
                 for item in json_result:
-                    currentPeriodNet = round(currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"], 2)
-                    currentPeriodNetPrice = round(currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"], 2)
+                    currentPeriodNet = currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"]
+                    currentPeriodNetPrice = currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"]
 
-                self.result["currentPeriodNet"] = currentPeriodNet
-                self.result["currentPeriodNetPrice"] = currentPeriodNetPrice
+                self.result["currentPeriodNet"] = round(currentPeriodNet, 2)
+                self.result["currentPeriodNetPrice"] = round(currentPeriodNetPrice, 2)
                 #todo: get start of period dynamically
             except http.client.HTTPException:
                 _LOGGER.error("Could not retrieve current usage numbers.")
