@@ -66,6 +66,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentUsage"))
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentNet"))
     sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentNetPrice"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentPeriodNet"))
+    sensors.append(GreenchoiceSensor(greenchoice_api, name, overeenkomst_id, username, password, "currentPeriodNetPrice"))
     add_entities(sensors, True)
 
 
@@ -165,6 +167,12 @@ class GreenchoiceSensor(Entity):
         if self._measurement_type == "currentNetPrice":
             self._icon = 'mdi:currency-eur'
             self._name = 'currentNetPrice'
+        if self._measurement_type == "currentPeriodNet":
+            self._icon = 'mdi:power-plug'
+            self._name = 'currentPeriodNet'
+        if self._measurement_type == "currentPeriodNetPrice":
+            self._icon = 'mdi:currency-eur'
+            self._name = 'currentPeriodNetPrice'
 
             
 
@@ -216,6 +224,25 @@ class GreenchoiceApiData:
                 self.result["currentUsage"] = json_result[0]["Levering"]["Verbruik"]
                 self.result["currentNet"] = json_result[0]["Levering"]["Verbruik"] - json_result[0]["Teruglevering"]["Verbruik"]
                 self.result["currentNetPrice"] = round(json_result[0]["Levering"]["VariabeleKosten"] - json_result[0]["Teruglevering"]["VariabeleKosten"], 2)
+            except http.client.HTTPException:
+                _LOGGER.error("Could not retrieve current usage numbers.")
+                self.result = "Could not retrieve current usage numbers." 
+            
+            try:
+                response = http.client.HTTPSConnection(self._resource, timeout=10)
+                response.request("GET", "/api/v2/verbruik/getverbruikperiodes?overeenkomstid=" + self._overeenkomst_id + "&startDate=2019-11-02&endDate=" + (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d') + "&year=0&month=0&isGas=false&ksDate=", headers = {'Authorization': "Bearer "+self.token})
+                json_result = json.loads(response.getresponse().read().decode('utf-8'))
+
+                currentPeriodNet = 0
+                currentPeriodNetPrice = 0
+
+                for item in json_result:
+                    currentPeriodNet = round(currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"], 2)
+                    currentPeriodNetPrice = round(currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"], 2)
+
+                self.result["currentPeriodNet"] = currentPeriodNet
+                self.result["currentPeriodNetPrice"] = currentPeriodNetPrice
+                #todo: get start of period dynamically
             except http.client.HTTPException:
                 _LOGGER.error("Could not retrieve current usage numbers.")
                 self.result = "Could not retrieve current usage numbers." 
