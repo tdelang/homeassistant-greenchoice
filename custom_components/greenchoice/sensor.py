@@ -221,10 +221,10 @@ class GreenchoiceApiData:
                 json_result = json.loads(response.getresponse().read().decode('utf-8'))
 
                 if not json_result[0]["Teruglevering"]["IsGeschat"]:
-                self.result["currentProduction"] = json_result[0]["Teruglevering"]["Verbruik"]
-                self.result["currentUsage"] = json_result[0]["Levering"]["Verbruik"]
-                self.result["currentNet"] = json_result[0]["Levering"]["Verbruik"] - json_result[0]["Teruglevering"]["Verbruik"]
-                self.result["currentNetPrice"] = round(json_result[0]["Levering"]["VariabeleKosten"] - json_result[0]["Teruglevering"]["VariabeleKosten"], 2)
+                    self.result["currentProduction"] = json_result[0]["Teruglevering"]["Verbruik"]
+                    self.result["currentUsage"] = json_result[0]["Levering"]["Verbruik"]
+                    self.result["currentNet"] = json_result[0]["Levering"]["Verbruik"] - json_result[0]["Teruglevering"]["Verbruik"]
+                    self.result["currentNetPrice"] = round(json_result[0]["Levering"]["VariabeleKosten"] - json_result[0]["Teruglevering"]["VariabeleKosten"], 2)
                 else:
                     self.result["currentProduction"] = STATE_UNKNOWN
                     self.result["currentUsage"] = STATE_UNKNOWN
@@ -236,7 +236,21 @@ class GreenchoiceApiData:
             
             try:
                 response = http.client.HTTPSConnection(self._resource, timeout=10)
-                response.request("GET", "/api/v2/verbruik/getverbruikperiodes?overeenkomstid=" + self._overeenkomst_id + "&startDate=2019-11-02&endDate=" + (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d') + "&year=0&month=0&isGas=false&ksDate=", headers = {'Authorization': "Bearer "+self.token})
+
+                today = datetime.today()
+                currentDay = today.day
+                currentMonth = today.month
+                currentYear = today.year
+                targetDay = 2
+                targetMonth = 11
+                targetYear = currentYear - 1
+
+                if currentMonth > targetMonth and currentDay >= targetDay:
+                    targetYear = currentYear
+
+                targetDateString = datetime(targetYear, targetMonth, targetDay).strftime('%Y-%m-%d')
+
+                response.request("GET", "/api/v2/verbruik/getverbruikperiodes?overeenkomstid=" + self._overeenkomst_id + "&startDate=" + targetDateString + "&endDate=" + (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d') + "&year=0&month=0&isGas=false&ksDate=", headers = {'Authorization': "Bearer "+self.token})
                 json_result = json.loads(response.getresponse().read().decode('utf-8'))
 
                 currentPeriodNet = 0
@@ -244,8 +258,8 @@ class GreenchoiceApiData:
 
                 for item in json_result:
                     if not item["Teruglevering"]["IsGeschat"]:
-                    currentPeriodNet = currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"]
-                    currentPeriodNetPrice = currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"]
+                        currentPeriodNet = currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"]
+                        currentPeriodNetPrice = currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"]
 
                 self.result["currentPeriodNet"] = round(currentPeriodNet, 2)
                 self.result["currentPeriodNetPrice"] = round(currentPeriodNetPrice, 2)
