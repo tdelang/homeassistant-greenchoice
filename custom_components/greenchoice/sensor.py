@@ -220,10 +220,16 @@ class GreenchoiceApiData:
                 response.request("GET", "/api/v2/verbruik/getverbruikperiodes?overeenkomstid=" + self._overeenkomst_id + "&startDate=" + (datetime.today() - timedelta(days=2)).strftime('%Y-%m-%d') + "&endDate=" + (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d') + "&year=0&month=0&isGas=false&ksDate=", headers = {'Authorization': "Bearer "+self.token})
                 json_result = json.loads(response.getresponse().read().decode('utf-8'))
 
+                if not json_result[0]["Teruglevering"]["IsGeschat"]:
                 self.result["currentProduction"] = json_result[0]["Teruglevering"]["Verbruik"]
                 self.result["currentUsage"] = json_result[0]["Levering"]["Verbruik"]
                 self.result["currentNet"] = json_result[0]["Levering"]["Verbruik"] - json_result[0]["Teruglevering"]["Verbruik"]
                 self.result["currentNetPrice"] = round(json_result[0]["Levering"]["VariabeleKosten"] - json_result[0]["Teruglevering"]["VariabeleKosten"], 2)
+                else:
+                    self.result["currentProduction"] = STATE_UNKNOWN
+                    self.result["currentUsage"] = STATE_UNKNOWN
+                    self.result["currentNet"] = STATE_UNKNOWN
+                    self.result["currentNetPrice"] = STATE_UNKNOWN
             except http.client.HTTPException:
                 _LOGGER.error("Could not retrieve current usage numbers.")
                 self.result = "Could not retrieve current usage numbers." 
@@ -237,6 +243,7 @@ class GreenchoiceApiData:
                 currentPeriodNetPrice = 0
 
                 for item in json_result:
+                    if not item["Teruglevering"]["IsGeschat"]:
                     currentPeriodNet = currentPeriodNet + item["Levering"]["Verbruik"] - item["Teruglevering"]["Verbruik"]
                     currentPeriodNetPrice = currentPeriodNetPrice + item["Levering"]["VariabeleKosten"] - item["Teruglevering"]["VariabeleKosten"]
 
